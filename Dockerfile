@@ -59,6 +59,10 @@ RUN pecl install msgpack \
 	&& echo | pecl install mongodb \
 	&& docker-php-ext-enable msgpack igbinary pcov mongodb
 
+# 配置并启用 PCNTL 扩展
+RUN docker-php-ext-configure pcntl --enable-pcntl \
+    && docker-php-ext-install pcntl
+
 COPY ./php.ini  $PHP_INI_DIR/conf.d/docker-vars.ini
 
 # 定义容器启动时执行的命令
