@@ -51,7 +51,7 @@ RUN apt-get update \
 #    && docker-php-ext-enable imagick
 
 
-RUN docker-php-ext-install pdo pgsql bcmath intl
+RUN docker-php-ext-install pdo pdo_pgsql pgsql bcmath intl
 
 RUN pecl install msgpack \
 	&& pecl install igbinary \
