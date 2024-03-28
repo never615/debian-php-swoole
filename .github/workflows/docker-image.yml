@@ -55,6 +55,28 @@ jobs:
           sbom: false
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.PROJECT_NAME }}:amd64
+  build-amd64-image-with-utils:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Shanghai
+    steps:
+      - uses: actions/checkout@v3
+      - name: Login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build && Push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          platforms: linux/amd64
+          file: ./Dockerfile_with_utils
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.PROJECT_NAME }}:amd64-with-utils
   combine-two-images:
     runs-on: ubuntu-latest
     needs:
