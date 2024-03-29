@@ -119,7 +119,7 @@ jobs:
         with:
           context: .
           platforms: linux/arm64
-          file: ./Dockerfile
+          file: ./Dockerfile_4.8_php8.2
           push: true
           provenance: false
           sbom: false
