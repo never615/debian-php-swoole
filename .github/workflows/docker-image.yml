@@ -93,7 +93,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
-          file: ./Dockerfile_with_utils
+          file: ./Dockerfile_4.8_php8.2
           push: true
           provenance: false
           sbom: false
