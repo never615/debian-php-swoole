@@ -1,0 +1,67 @@
+# 使用 PHP 官方镜像作为基础
+FROM phpswoole/swoole:5.1.2-php8.2
+
+
+# 设置非交互式前端以避免交互式配置
+ENV DEBIAN_FRONTEND=noninteractive
+
+
+RUN apt-get update && apt-get install -y \
+		libfreetype-dev \
+		libjpeg62-turbo-dev \
+		libpng-dev \
+    && rm -r /var/lib/apt/lists/* \
+	&& docker-php-ext-configure gd --with-freetype --with-jpeg \
+	&& docker-php-ext-install -j$(nproc) gd
+
+RUN apt-get update \
+    && apt-get install -y \
+    libc-client-dev \
+    libkrb5-dev \
+    && rm -r /var/lib/apt/lists/* \
+    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+    && docker-php-ext-install imap
+
+RUN apt-get update \
+    && apt-get install -y \
+    libgmp-dev \
+    && rm -r /var/lib/apt/lists/* \
+    && docker-php-ext-install gmp
+
+RUN apt-get update \
+    && apt-get install -y \
+   	zip \
+    libzip-dev \
+    && rm -r /var/lib/apt/lists/* \
+    && docker-php-ext-install zip
+
+RUN apt-get update \
+    && apt-get install -y \
+    libxml2-dev \
+    && rm -r /var/lib/apt/lists/* \
+    && docker-php-ext-install soap
+
+#RUN apt-get update \
+#    && apt-get install -y \
+#    libmagickwand-dev \
+#    && rm -r /var/lib/apt/lists/* \
+#    && echo | pecl install imagick \
+#    && docker-php-ext-enable imagick
+
+
+RUN docker-php-ext-install pdo pdo_pgsql pgsql bcmath intl
+
+RUN pecl install msgpack \
+	&& pecl install igbinary \
+	&& pecl install pcov \
+	&& echo | pecl install mongodb \
+	&& docker-php-ext-enable msgpack igbinary pcov mongodb
+
+# 配置并启用 PCNTL 扩展
+RUN docker-php-ext-configure pcntl --enable-pcntl \
+    && docker-php-ext-install pcntl
+
+COPY ./php.ini  $PHP_INI_DIR/conf.d/docker-vars.ini
+
+# 定义容器启动时执行的命令
+CMD ["php", "--version"]
