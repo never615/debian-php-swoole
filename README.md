@@ -32,13 +32,13 @@ docker import --platform linux/arm64 \
 
 docker build --platform linux/arm64 \
   -f Dockerfile_kylin_5.0.3_php8.2 \
-  -t mallto/debian-php-swoole:kylin-v10-sp3-arm64-5.0.3-php8.2 .
+  -t registry.cn-shenzhen.aliyuncs.com/mallto/php-swoole:kylin-v10-sp3-arm64-5.0.3-php8.2 .
 ```
 
 验证容器内的操作系统和运行时：
 
 ```bash
-docker run --rm mallto/debian-php-swoole:kylin-v10-sp3-arm64-5.0.3-php8.2 \
+docker run --rm registry.cn-shenzhen.aliyuncs.com/mallto/php-swoole:kylin-v10-sp3-arm64-5.0.3-php8.2 \
   sh -lc 'cat /etc/os-release; php -v; php --ri swoole | head -20'
 ```
 
@@ -60,9 +60,9 @@ ACR 构建规则建议固定为：
 ```bash
 docker build --platform linux/amd64 \
   -f Dockerfile_kylin_amd64_5.0.3_php8.2 \
-  -t registry.cn-shenzhen.aliyuncs.com/mallto/debian-php-swoole:kylin-v10-sp3-amd64-5.0.3-php8.2 .
+  -t registry.cn-shenzhen.aliyuncs.com/mallto/php-swoole:kylin-v10-sp3-amd64-5.0.3-php8.2 .
 
 docker run --rm --platform linux/amd64 \
-  registry.cn-shenzhen.aliyuncs.com/mallto/debian-php-swoole:kylin-v10-sp3-amd64-5.0.3-php8.2 \
+  registry.cn-shenzhen.aliyuncs.com/mallto/php-swoole:kylin-v10-sp3-amd64-5.0.3-php8.2 \
   sh -lc 'uname -m; cat /etc/.productinfo; php -v; php --ri swoole | head -20'
 ```
