@@ -62,7 +62,7 @@ RUN pecl install msgpack \
 RUN docker-php-ext-configure pcntl --enable-pcntl \
     && docker-php-ext-install pcntl
 
-COPY ./php.ini  $PHP_INI_DIR/conf.d/docker-vars.ini
+COPY ./docker_var.ini  $PHP_INI_DIR/conf.d/docker-vars.ini
 
 # 定义容器启动时执行的命令
 CMD ["php", "--version"]
