@@ -1,0 +1,153 @@
+# syntax=docker/dockerfile:1.7
+
+# Kylin V10 SP3 2403 amd64 image manifest. Keep the architecture-specific
+# digest here so ACR cannot resolve this build to the ARM64 variant.
+ARG KYLIN_BASE_IMAGE=macrosan/kylin:v10-sp3-2403@sha256:556dc2afa33560610760aaf49d4db3d682b7115d318e933fae20f59dfcc4d321
+ARG COMPOSER_VERSION=2.8.12
+ARG COMPOSER_SHA256=f446ea719708bb85fcbf4ef18def5d0515f1f9b4d703f6d820c9c1656e10a2f2
+
+FROM ${KYLIN_BASE_IMAGE} AS build
+
+ARG PHP_VERSION=8.2.5
+ARG SWOOLE_VERSION=5.0.3
+ARG MSGPACK_VERSION=2.2.0
+ARG IGBINARY_VERSION=3.2.15
+ARG PCOV_VERSION=1.0.11
+ARG MONGODB_VERSION=1.19.0
+ARG REDIS_VERSION=5.3.7
+
+ENV PHP_INI_DIR=/usr/local/etc/php \
+    PATH=/usr/local/bin:/usr/local/sbin:$PATH
+
+RUN test "$(uname -m)" = x86_64 \
+    && grep -Fq 'Kylin Linux Advanced Server' /etc/.productinfo \
+    && grep -Fq 'V10 SP3 2403' /etc/.productinfo \
+    && rpm -q kylin-release
+
+RUN dnf -y --setopt=install_weak_deps=False install \
+        autoconf automake bison bzip2-devel c-ares-devel cmake curl \
+        findutils freetype-devel gcc gcc-c++ gmp-devel krb5-devel \
+        libargon2-devel libcurl-devel libicu-devel libjpeg-turbo-devel \
+        libpng-devel libsodium-devel libtool libxml2-devel libzip-devel \
+        libnghttp2-devel make oniguruma-devel openssl-devel \
+        pkgconf-pkg-config postgresql-devel readline-devel sqlite-devel \
+        tar uw-imap-devel xz zlib-devel \
+    && dnf clean all
+
+WORKDIR /usr/src
+
+RUN curl -fsSL "https://www.php.net/distributions/php-${PHP_VERSION}.tar.xz" -o php.tar.xz \
+    && mkdir php-src \
+    && tar -xJf php.tar.xz -C php-src --strip-components=1 \
+    && cd php-src \
+    && ./configure \
+        --prefix=/usr/local \
+        --with-config-file-path="${PHP_INI_DIR}" \
+        --with-config-file-scan-dir="${PHP_INI_DIR}/conf.d" \
+        --disable-cgi \
+        --enable-bcmath \
+        --enable-ftp \
+        --enable-gd \
+        --enable-intl \
+        --enable-mbstring \
+        --enable-mysqlnd \
+        --enable-pcntl \
+        --enable-soap \
+        --enable-sockets \
+        --with-bz2 \
+        --with-curl \
+        --with-freetype \
+        --with-gmp \
+        --with-imap=/usr \
+        --with-imap-ssl \
+        --with-jpeg \
+        --with-kerberos \
+        --with-libdir=lib64 \
+        --with-openssl \
+        --with-password-argon2 \
+        --with-pdo-mysql=mysqlnd \
+        --with-pdo-pgsql \
+        --with-pdo-sqlite=/usr \
+        --with-pear \
+        --with-pgsql \
+        --with-readline \
+        --with-sodium \
+        --with-sqlite3=/usr \
+        --with-zip \
+        --with-zlib \
+    && make -j"$(nproc)" \
+    && make install \
+    && mkdir -p "${PHP_INI_DIR}/conf.d" \
+    && cp php.ini-production "${PHP_INI_DIR}/php.ini" \
+    && php --version \
+    && php -m
+
+COPY --chmod=0755 ./build-pecl-extension.sh /usr/src/build-pecl-extension.sh
+
+RUN /usr/src/build-pecl-extension.sh msgpack "${MSGPACK_VERSION}"
+RUN /usr/src/build-pecl-extension.sh igbinary "${IGBINARY_VERSION}"
+RUN /usr/src/build-pecl-extension.sh pcov "${PCOV_VERSION}"
+RUN /usr/src/build-pecl-extension.sh mongodb "${MONGODB_VERSION}"
+RUN /usr/src/build-pecl-extension.sh redis "${REDIS_VERSION}"
+
+RUN curl -fsSL "https://github.com/swoole/swoole-src/archive/refs/tags/v${SWOOLE_VERSION}.tar.gz" -o /tmp/swoole.tar.gz \
+    && mkdir /tmp/swoole \
+    && tar -xzf /tmp/swoole.tar.gz -C /tmp/swoole --strip-components=1 \
+    && cd /tmp/swoole \
+    && phpize \
+    && ./configure \
+        --enable-cares \
+        --enable-mysqlnd \
+        --enable-openssl \
+        --enable-sockets \
+        --enable-swoole-curl \
+        --enable-swoole-pgsql \
+        --with-nghttp2_dir=/usr \
+    && make -j"$(nproc)" \
+    && make install \
+    && echo 'extension=swoole.so' > "${PHP_INI_DIR}/conf.d/30-swoole.ini" \
+    && php --ri swoole | grep -E 'Version|openssl|http2|curl-native|coroutine_postgresql'
+
+FROM ${KYLIN_BASE_IMAGE}
+
+ARG COMPOSER_VERSION
+ARG COMPOSER_SHA256
+
+LABEL org.opencontainers.image.base.name="macrosan/kylin:v10-sp3-2403" \
+      com.mallto.os="Kylin Linux Advanced Server V10 SP3 2403" \
+      com.mallto.arch="amd64" \
+      com.mallto.php.version="8.2.5" \
+      com.mallto.swoole.version="5.0.3"
+
+ENV PHP_INI_DIR=/usr/local/etc/php \
+    PATH=/usr/local/bin:/usr/local/sbin:$PATH
+
+RUN test "$(uname -m)" = x86_64 \
+    && grep -Fq 'Kylin Linux Advanced Server' /etc/.productinfo \
+    && grep -Fq 'V10 SP3 2403' /etc/.productinfo \
+    && rpm -q kylin-release \
+    && dnf -y --setopt=install_weak_deps=False install \
+        ca-certificates c-ares curl freetype gmp krb5-libs libc-client \
+        git libargon2 libcurl libicu libjpeg-turbo libpng libsodium libxml2 libzip \
+        libnghttp2 oniguruma openssh-clients openssl postgresql-libs readline \
+        shadow-utils sqlite unzip zlib \
+    && dnf clean all \
+    && groupadd --gid 82 www-data \
+    && useradd --uid 82 --gid 82 --home-dir /var/www --shell /sbin/nologin \
+        --comment www-data --no-create-home www-data \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo 'Asia/Shanghai' > /etc/timezone
+
+COPY --from=build /usr/local /usr/local
+COPY ./docker_var.ini ${PHP_INI_DIR}/conf.d/99-docker-vars.ini
+
+RUN curl -fsSL --retry 5 --retry-all-errors \
+        "https://getcomposer.org/download/${COMPOSER_VERSION}/composer.phar" \
+        -o /usr/local/bin/composer \
+    && echo "${COMPOSER_SHA256}  /usr/local/bin/composer" | sha256sum --check --strict \
+    && chmod 0755 /usr/local/bin/composer \
+    && php -v \
+    && composer --version \
+    && php -r 'foreach (["bcmath","curl","gd","gmp","imap","intl","mongodb","msgpack","pcntl","pcov","pdo_pgsql","pgsql","redis","soap","sockets","swoole","zip"] as $extension) { if (!extension_loaded($extension)) { fwrite(STDERR, "missing extension: {$extension}\n"); exit(1); } }'
+
+CMD ["php", "--version"]
